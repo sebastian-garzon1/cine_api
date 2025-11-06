@@ -11,6 +11,6 @@ return [
         'charset' => 'utf8mb4',
     ],
     'app' => [
-        'base_url' => 'http://localhost/cine_api/public' // o la IP/puerto
+        'base_url' => 'http://localhost/cine_api/public'
     ]
 ];

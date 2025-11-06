@@ -1,20 +1,33 @@
 <?php
-// src/helpers.php
-declare(strict_types=1);
+require_once __DIR__ . '/../src/helpers.php';
+allow_cors();
 
-function allow_cors(): void {
-    header("Access-Control-Allow-Origin: *");
-    header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-    header("Access-Control-Allow-Headers: Content-Type, Authorization");
-    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-        http_response_code(204);
-        exit;
-    }
-}
+$path = $_GET['path'] ?? '';
+$method = $_SERVER['REQUEST_METHOD'];
 
-function json_response($data, int $code = 200): void {
-    header('Content-Type: application/json; charset=utf-8');
-    http_response_code($code);
-    echo json_encode($data);
-    exit;
+require_once __DIR__ . '/../src/db.php';
+require_once __DIR__ . '/../src/controllers/AuthController.php';
+
+$segments = explode('/', trim($path, '/'));
+
+switch ($segments[0]) {
+    case '':
+        json_response(['message' => 'API cine - endpoints: /peliculas, /reservas, /auth']);
+        break;
+
+    case 'peliculas':
+        $controller = new PeliculaController($pdo);
+        if ($method === 'GET' && empty($segments[1])) $controller->index();
+        elseif ($method === 'GET' && is_numeric($segments[1])) $controller->show((int)$segments[1]);
+        else json_response(['error' => 'Ruta no válida'], 404);
+        break;
+
+    case 'auth':
+        $controller = new AuthController($pdo);
+        if ($method === 'POST') $controller->login();
+        else json_response(['error' => 'Método no permitido'], 405);
+        break;
+
+    default:
+        json_response(['error' => 'Ruta no encontrada'], 404);
 }
