@@ -7,6 +7,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 require_once __DIR__ . '/../src/db.php';
 require_once __DIR__ . '/../src/controllers/AuthController.php';
+require_once __DIR__ . '/../src/controllers/PeliculaController.php';
 
 $segments = explode('/', trim($path, '/'));
 

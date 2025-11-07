@@ -7,7 +7,7 @@ return [
         'host' => 'localhost',
         'dbname' => 'cine',
         'user' => 'root',
-        'pass' => '123456',
+        'pass' => '',
         'charset' => 'utf8mb4',
     ],
     'app' => [
