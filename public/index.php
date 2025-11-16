@@ -108,14 +108,31 @@ switch ($segments[0]) {
     // ======================
     // Cines
     // ======================
-    case 'cines':
-        $controller = new CineController($pdo);
-        if ($method === 'GET' && empty($segments[1])) $controller->index();
-        elseif ($method === 'GET') $controller->show((int)$segments[1]);
-        elseif ($method === 'POST') $controller->store();
-        elseif ($method === 'PUT') $controller->update((int)$segments[1]);
-        elseif ($method === 'DELETE') $controller->delete((int)$segments[1]);
-        else json_response(['error' => 'Método no permitido'], 405);
+
+case 'cines':
+    $controller = new CineController($pdo);
+
+    if ($method === 'GET' && empty($segments[1])) {
+        $controller->index();
+    }
+    elseif ($method === 'GET' && is_numeric($segments[1])) {
+        $controller->show((int)$segments[1]);
+    }
+    elseif ($method === 'GET' && $segments[1] === 'buscar') {
+        $controller->buscarNombre();
+    }
+    elseif ($method === 'POST') {
+        $controller->store();
+    }
+    elseif ($method === 'PUT' && is_numeric($segments[1])) {
+        $controller->update((int)$segments[1]);
+    }
+    elseif ($method === 'DELETE' && is_numeric($segments[1])) {
+        $controller->delete((int)$segments[1]);
+    }
+    else {
+        json_response(['error' => 'Método no permitido'], 405);
+    }
         break;
 
     // ======================

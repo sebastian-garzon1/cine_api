@@ -15,6 +15,19 @@ class CineController {
         echo json_encode($stmt->fetch());
     }
 
+    public function buscarNombre(): void {
+        $nombre = $_GET['nombre'] ?? '';
+        $nombre = trim($nombre);
+        $stmt = $this->pdo->prepare("
+            SELECT * FROM cine 
+            WHERE nombre LIKE ?
+        ");
+
+        $stmt->execute(["%$nombre%"]);
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode($result ?: []);
+    }
+
     public function store(): void {
         $input = json_decode(file_get_contents('php://input'), true);
         $stmt = $this->pdo->prepare("INSERT INTO cine (nombre, direccion) VALUES (?, ?)");
