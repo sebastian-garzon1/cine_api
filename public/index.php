@@ -2,10 +2,33 @@
 declare(strict_types=1);
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', '1');
 
 require_once __DIR__ . '/../src/helpers.php';
 allow_cors();
+function require_admin(): void {
+    $headers = getallheaders();
+
+    // ACEPTAR "Rol", "rol" o "ROL"
+    $rol = $headers['Rol'] ??
+           $headers['rol'] ??
+           $headers['ROL'] ??
+           null;
+
+    if ($rol === null) {
+        http_response_code(403);
+        echo json_encode(['error' => 'Falta el rol']);
+        exit;
+    }
+
+    if ((int)$rol !== 1) {
+        http_response_code(403);
+        echo json_encode(['error' => 'No autorizado. Solo administradores.']);
+        exit;
+    }
+}
+
+
 
 $path = $_GET['path'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'];
@@ -165,14 +188,36 @@ case 'cines':
     // Precios
     // ======================
     case 'precios':
-        $controller = new PrecioController($pdo);
-        if ($method === 'GET' && empty($segments[1])) $controller->index();
-        elseif ($method === 'GET') $controller->show((int)$segments[1]);
-        elseif ($method === 'POST') $controller->store();
-        elseif ($method === 'PUT') $controller->update((int)$segments[1]);
-        elseif ($method === 'DELETE') $controller->delete((int)$segments[1]);
-        else json_response(['error' => 'Método no permitido'], 405);
-        break;
+    $controller = new PrecioController($pdo);
+
+    if ($method === 'GET' && empty($segments[1])) {
+        // Público: ver todos los precios
+        $controller->index();
+    }
+    elseif ($method === 'GET') {
+        // Público: ver un precio
+        $controller->show((int)$segments[1]);
+    }
+    elseif ($method === 'POST') {
+        // Solo admins
+        require_admin();
+        $controller->store();
+    }
+    elseif ($method === 'PUT') {
+        // Solo admins
+        require_admin();
+        $controller->update((int)$segments[1]);
+    }
+    elseif ($method === 'DELETE') {
+        // Solo admins
+        require_admin();
+        $controller->delete((int)$segments[1]);
+    }
+    else {
+        json_response(['error' => 'Método no permitido'], 405);
+    }
+    break;
+
 
     // ======================
     // Reservas
