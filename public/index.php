@@ -48,6 +48,7 @@ require_once __DIR__ . '/../src/controllers/PrecioController.php';
 require_once __DIR__ . '/../src/controllers/ReservaController.php';
 require_once __DIR__ . '/../src/controllers/RolController.php';
 require_once __DIR__ . '/../src/controllers/PeliculaActorController.php';
+require_once __DIR__ . '/../src/controllers/PasswordResetController.php';
 
 $segments = explode('/', trim($path, '/'));
 
@@ -254,6 +255,19 @@ case 'cines':
         elseif ($method === 'POST') $controller->store();
         elseif ($method === 'DELETE') $controller->delete((int)$segments[1]);
         else json_response(['error' => 'Método no permitido'], 405);
+        break;
+
+    // ======================
+    // password_reset
+    // ======================
+    case 'password_reset':
+        $controller = new PasswordResetController($pdo);
+
+        if ($method === 'POST' && $segments[1] === 'solicitar') $controller->solicitar();
+        elseif ($method === 'POST' && $segments[1] === 'verificar') $controller->verificar();
+        elseif ($method === 'POST' && $segments[1] === 'cambiar') $controller->cambiar();
+        else json_response(['error' => 'Ruta no válida'], 404);
+
         break;
 
     // ======================
