@@ -32,19 +32,88 @@ class ReservaController {
     }
 
     public function store(): void {
+    try {
         $input = json_decode(file_get_contents('php://input'), true);
-        $stmt = $this->pdo->prepare("
-            INSERT INTO reserva (id_persona, id_horario, cantidad_boletos, precio_unitario, estado_pago)
-            VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([
-            $input['id_persona'],
-            $input['id_horario'],
-            $input['cantidad_boletos'],
-            $input['precio_unitario'],
-            $input['estado_pago'] ?? 'Pendiente'
+
+        if (!$input || !isset($input['id_persona'], $input['id_horario'], $input['cantidad_boletos'])) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Datos incompletos']);
+            return;
+        }
+
+        $idPersona = $input['id_persona'];
+        $idHorario = $input['id_horario'];
+        $cantidad = $input['cantidad_boletos'];
+
+        // 1️⃣ Obtener el cine desde el horario
+        $sql = "
+            SELECT c.id_cine
+            FROM horario h
+            JOIN sala s ON s.id_sala = h.id_sala
+            JOIN cine c ON c.id_cine = s.id_cine
+            WHERE h.id_horario = ?
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$idHorario]);
+        $idCine = $stmt->fetchColumn();
+
+        if (!$idCine) {
+            http_response_code(404);
+            echo json_encode(['error' => 'No se encontró el cine del horario']);
+            return;
+        }
+
+        // 2️⃣ Obtener precios del cine
+        $sql = "SELECT descripcion, valor FROM precio WHERE id_cine = ?";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$idCine]);
+        $precios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $precioSemana = 0;
+        $precioFinde = 0;
+
+        foreach ($precios as $p) {
+            $desc = strtolower($p['descripcion']);
+
+            if (strpos($desc, 'entre semana') !== false) {
+                $precioSemana = $p['valor'];
+            }
+
+            if (strpos($desc, 'fin de semana') !== false) {
+                $precioFinde = $p['valor'];
+            }
+        }
+
+        // 3️⃣ Determinar el día actual (1=Lunes..7=Domingo)
+        $dia = date('N');
+
+        if ($dia >= 6) { 
+            $precioUnitario = $precioFinde;
+        } else {
+            $precioUnitario = $precioSemana;
+        }
+
+        // 4️⃣ Insertar la reserva
+        $sql = "
+            INSERT INTO reserva (id_persona, id_horario, cantidad_boletos, precio_unitario)
+            VALUES (?, ?, ?, ?)
+        ";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$idPersona, $idHorario, $cantidad, $precioUnitario]);
+
+        http_response_code(201);
+        echo json_encode([
+            'message' => 'Reserva creada correctamente',
+            'precio_unitario' => $precioUnitario
         ]);
-        echo json_encode(['message'=>'Reserva creada','id'=>$this->pdo->lastInsertId()]);
+
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Error al crear reserva', 'mensaje' => $e->getMessage()]);
     }
+}
+
 
     public function delete(int $id): void {
         $stmt = $this->pdo->prepare("DELETE FROM reserva WHERE id_reserva=?");

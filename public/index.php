@@ -30,7 +30,31 @@ function require_admin(): void {
 
 
 
-$path = $_GET['path'] ?? '';
+//$path = $_GET['path'] ?? '';
+// 1️⃣ Si la solicitud trae ?path= lo usamos
+if (isset($_GET['path'])) {
+    $path = trim($_GET['path'], '/');
+} 
+else {
+    // 2️⃣ Tomar toda la URI que llegó
+    $uri = $_SERVER['REQUEST_URI'];
+
+    // 3️⃣ Eliminar parámetros GET (ej: ?id=2)
+    $uri = explode('?', $uri)[0];
+
+    // 4️⃣ Eliminar "/cine_api/public/" del inicio
+    $base = '/cine_api/public/';
+    if (strpos($uri, $base) === 0) {
+        $path = substr($uri, strlen($base));
+    } else {
+        $path = $uri;
+    }
+
+    // 5️⃣ Limpiar barras
+    $path = trim($path, '/');
+}
+
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 require_once __DIR__ . '/../src/db.php';
@@ -81,14 +105,73 @@ switch ($segments[0]) {
     // Películas
     // ======================
     case 'peliculas':
-        $controller = new PeliculaController($pdo);
-        if ($method === 'GET' && empty($segments[1])) $controller->index();
-        elseif ($method === 'GET') $controller->show((int)$segments[1]);
-        elseif ($method === 'POST') $controller->store();
-        elseif ($method === 'PUT') $controller->update((int)$segments[1]);
-        elseif ($method === 'DELETE') $controller->delete((int)$segments[1]);
-        else json_response(['error' => 'Método no permitido'], 405);
-        break;
+    $controller = new PeliculaController($pdo);
+
+    // GET /peliculas
+    if ($method === 'GET' && empty($segments[1])) {
+        $controller->index();
+    }
+
+    // GET /peliculas/{id}/cines
+// GET /peliculas/{id}/cines
+// GET /peliculas/{id}/cines
+elseif ($method === 'GET' && isset($segments[2]) && $segments[2] === 'cines') {
+
+    $id = (int)$segments[1];
+
+    // Consulta CORRECTA usando sala → cine
+    $sql = "
+        SELECT 
+            c.id_cine,
+            c.nombre,
+            c.direccion,
+            c.telefono
+        FROM cine c
+        INNER JOIN sala s ON s.id_cine = c.id_cine
+        INNER JOIN horario h ON h.id_sala = s.id_sala
+        WHERE h.id_pelicula = ?
+        GROUP BY c.id_cine
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$id]);
+    $cines = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'pelicula' => ['id_pelicula' => $id],
+        'cines' => $cines
+    ]);
+    exit;
+}
+
+
+    // GET /peliculas/{id}
+    elseif ($method === 'GET' && is_numeric($segments[1])) {
+        $controller->show((int)$segments[1]);
+    }
+
+    // POST /peliculas
+    elseif ($method === 'POST') {
+        $controller->store();
+    }
+
+    // PUT /peliculas/{id}
+    elseif ($method === 'PUT') {
+        $controller->update((int)$segments[1]);
+    }
+
+    // DELETE /peliculas/{id}
+    elseif ($method === 'DELETE') {
+        $controller->delete((int)$segments[1]);
+    }
+
+    else {
+        json_response(['error' => 'Método no permitido'], 405);
+    }
+
+    break;
+
+
 
     // ======================
     // Actores
@@ -176,6 +259,35 @@ case 'cines':
     // Horarios
     // ======================
     case 'horarios':
+       // GET /horarios?pelicula=ID&cine=ID
+if ($method === 'GET' && $segments[0] === 'horarios' 
+    && isset($_GET['pelicula']) 
+    && isset($_GET['cine'])) {
+
+    $idPelicula = (int)$_GET['pelicula'];
+    $idCine = (int)$_GET['cine'];
+
+    $sql = "
+        SELECT 
+            h.id_horario, 
+            h.hora, 
+            s.nombre_sala
+        FROM horario h
+        JOIN sala s ON h.id_sala = s.id_sala
+        WHERE h.id_pelicula = ? 
+        AND s.id_cine = ?
+        ORDER BY h.hora ASC
+    ";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$idPelicula, $idCine]);
+
+    echo json_encode([
+        'horarios' => $stmt->fetchAll(PDO::FETCH_ASSOC)
+    ]);
+    exit;
+}
+
         $controller = new HorarioController($pdo);
         if ($method === 'GET' && empty($segments[1])) $controller->index();
         elseif ($method === 'GET') $controller->show((int)$segments[1]);
@@ -191,33 +303,44 @@ case 'cines':
     case 'precios':
     $controller = new PrecioController($pdo);
 
+    // GET /precios
     if ($method === 'GET' && empty($segments[1])) {
-        // Público: ver todos los precios
         $controller->index();
     }
-    elseif ($method === 'GET') {
-        // Público: ver un precio
+
+    // GET /precios/tarifas/{id_cine}
+    elseif ($method === 'GET' && isset($segments[1]) && $segments[1] === 'tarifas') {
+        $controller->tarifas((int)$segments[2]);
+    }
+
+    // GET /precios/{id}
+    elseif ($method === 'GET' && is_numeric($segments[1])) {
         $controller->show((int)$segments[1]);
     }
+
+    // POST /precios  (admin)
     elseif ($method === 'POST') {
-        // Solo admins
         require_admin();
         $controller->store();
     }
+
+    // PUT /precios/{id} (admin)
     elseif ($method === 'PUT') {
-        // Solo admins
         require_admin();
         $controller->update((int)$segments[1]);
     }
+
+    // DELETE /precios/{id} (admin)
     elseif ($method === 'DELETE') {
-        // Solo admins
         require_admin();
         $controller->delete((int)$segments[1]);
     }
+
     else {
         json_response(['error' => 'Método no permitido'], 405);
     }
     break;
+
 
 
     // ======================

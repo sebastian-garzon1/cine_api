@@ -61,4 +61,40 @@ class PrecioController {
         $stmt->execute([$id]);
         echo json_encode(['message'=>'Precio eliminado']);
     }
+   public function tarifas(int $id_cine): void {
+
+    $stmt = $this->pdo->prepare(
+        "SELECT descripcion, valor 
+         FROM precio 
+         WHERE id_cine = ?"
+    );
+
+    $stmt->execute([$id_cine]);
+    $precios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    $precioSemana = 0;
+    $precioFinde = 0;
+
+    foreach ($precios as $p) {
+
+        $desc = strtolower($p['descripcion']);
+
+        // Para precio entre semana
+        if (strpos($desc, 'entre semana') !== false) {
+            $precioSemana = (int)$p['valor'];
+        }
+
+        // Para precio fin de semana
+        if (strpos($desc, 'fin de semana') !== false) {
+            $precioFinde = (int)$p['valor'];
+        }
+    }
+
+    echo json_encode([
+        'precio_semana' => $precioSemana,
+        'precio_finde'  => $precioFinde
+    ]);
+}
+
+
 }

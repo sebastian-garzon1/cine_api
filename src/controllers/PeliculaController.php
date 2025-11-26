@@ -33,25 +33,109 @@ class PeliculaController {
      * 🎬 Mostrar una película por ID
      * GET /peliculas/{id}
      */
-    public function show(int $id): void {
-        try {
-            $stmt = $this->pdo->prepare("SELECT * FROM pelicula WHERE id_pelicula = ?");
-            $stmt->execute([$id]);
-            $pelicula = $stmt->fetch(PDO::FETCH_ASSOC);
+  public function show(int $id): void {
+    try {
+        // 1) película + director
+        $sql = "
+            SELECT p.id_pelicula, p.titulo, p.genero, p.clasificacion,
+                   d.nombre AS director
+            FROM pelicula p
+            LEFT JOIN director d ON p.id_director = d.id_director
+            WHERE p.id_pelicula = ?
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$id]);
+        $pelicula = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$pelicula) {
-                http_response_code(404);
-                echo json_encode(['error' => 'Película no encontrada']);
-                return;
-            }
-
-            header('Content-Type: application/json');
-            echo json_encode($pelicula);
-        } catch (Exception $e) {
-            http_response_code(500);
-            echo json_encode(['error' => 'Error al obtener película', 'message' => $e->getMessage()]);
+        if (!$pelicula) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Película no encontrada']);
+            return;
         }
+
+        // 2) Actores relacionados
+        $sqlActores = "
+            SELECT a.id_actor, a.nombre
+            FROM actor a
+            INNER JOIN pelicula_actor pa ON pa.id_actor = a.id_actor
+            WHERE pa.id_pelicula = ?
+        ";
+        $stmt2 = $this->pdo->prepare($sqlActores);
+        $stmt2->execute([$id]);
+        $actores = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'pelicula' => $pelicula,
+            'actores'  => $actores
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Error al obtener película']);
     }
+}
+public function cines(int $id): void {
+    try {
+        // 1) Información de la película
+        $stmt = $this->pdo->prepare("
+            SELECT p.id_pelicula, p.titulo, p.genero, p.clasificacion,
+                   d.nombre AS director
+            FROM pelicula p
+            LEFT JOIN director d ON p.id_director = d.id_director
+            WHERE p.id_pelicula = ?
+        ");
+        $stmt->execute([$id]);
+        $pelicula = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$pelicula) {
+            http_response_code(404);
+            echo json_encode(['error' => 'Película no encontrada']);
+            return;
+        }
+
+        // 2) Cines donde proyectan esa película
+        $sqlCines = "
+            SELECT DISTINCT c.id_cine, c.nombre
+            FROM horario h
+            INNER JOIN sala s ON s.id_sala = h.id_sala
+            INNER JOIN cine c ON c.id_cine = s.id_cine
+            WHERE h.id_pelicula = ?
+            ORDER BY c.nombre
+        ";
+
+        $stmt2 = $this->pdo->prepare($sqlCines);
+        $stmt2->execute([$id]);
+        $cines = $stmt2->fetchAll(PDO::FETCH_ASSOC);
+
+        echo json_encode([
+            'pelicula' => $pelicula,
+            'cines' => $cines
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Error al obtener cines']);
+    }
+}
+
+// lo acabo de agregar para quede cine colombia sino se puede quitar
+public function cinesPorPelicula(int $id): void {
+    // Obtener cines que tienen esta película
+    $sql = "
+        SELECT c.id_cine, c.nombre, c.direccion, c.telefono
+        FROM cine c
+        INNER JOIN sala s ON s.id_cine = c.id_cine
+        INNER JOIN horario h ON h.id_sala = s.id_sala
+        WHERE h.id_pelicula = ?
+        GROUP BY c.id_cine
+    ";
+
+    $stmt = $this->pdo->prepare($sql);
+    $stmt->execute([$id]);
+    $cines = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode([
+        'cines' => $cines
+    ]);
+}
 
     /**
      * ➕ Crear una nueva película

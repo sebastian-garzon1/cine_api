@@ -5,7 +5,8 @@ declare(strict_types=1);
 return [
     'db' => [
         'host' => 'localhost',
-        'dbname' => 'cine_db',
+        // cambiar siempre la mia se lalma cine no cine_bd
+        'dbname' => 'cine',
         'user' => 'root',
         'pass' => '123456',
         'charset' => 'utf8mb4',
