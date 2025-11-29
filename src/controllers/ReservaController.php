@@ -45,7 +45,6 @@ class ReservaController {
         $idHorario = $input['id_horario'];
         $cantidad = $input['cantidad_boletos'];
 
-        // 1️⃣ Obtener el cine desde el horario
         $sql = "
             SELECT c.id_cine
             FROM horario h
@@ -83,8 +82,6 @@ class ReservaController {
                 $precioFinde = $p['valor'];
             }
         }
-
-        // 3️⃣ Determinar el día actual (1=Lunes..7=Domingo)
         $dia = date('N');
 
         if ($dia >= 6) { 
