@@ -346,14 +346,38 @@ if ($method === 'GET' && $segments[0] === 'horarios'
     // ======================
     // Reservas
     // ======================
-    case 'reservas':
-        $controller = new ReservaController($pdo);
-        if ($method === 'GET' && empty($segments[1])) $controller->index();
-        elseif ($method === 'GET') $controller->show((int)$segments[1]);
-        elseif ($method === 'POST') $controller->store();
-        elseif ($method === 'DELETE') $controller->delete((int)$segments[1]);
-        else json_response(['error' => 'Método no permitido'], 405);
-        break;
+   case 'reservas':
+    $controller = new ReservaController($pdo);
+    
+    // GET /reservas (listar todas)
+    if ($method === 'GET' && empty($segments[1])) {
+        $controller->index();
+    }
+    
+    // GET /reservas/precio?id_horario=123 (obtener precio)
+    elseif ($method === 'GET' && isset($segments[1]) && $segments[1] === 'precio') {
+        $controller->getPrecio();
+    }
+    
+    // GET /reservas/{id} (ver una reserva)
+    elseif ($method === 'GET' && is_numeric($segments[1])) {
+        $controller->show((int)$segments[1]);
+    }
+    
+    // POST /reservas (crear reserva)
+    elseif ($method === 'POST') {
+        $controller->store();
+    }
+    
+    // DELETE /reservas/{id} (eliminar reserva)
+    elseif ($method === 'DELETE' && is_numeric($segments[1])) {
+        $controller->delete((int)$segments[1]);
+    }
+    
+    else {
+        json_response(['error' => 'Método no permitido'], 405);
+    }
+    break;
 
     // ======================
     // Roles
