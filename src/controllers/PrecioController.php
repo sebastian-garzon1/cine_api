@@ -1,21 +1,34 @@
 <?php
+
 declare(strict_types=1);
 
-class PrecioController {
+class PrecioController
+{
     private PDO $pdo;
-    public function __construct(PDO $pdo) { $this->pdo = $pdo; }
-
-    public function index(): void {
-        echo json_encode($this->pdo->query("SELECT * FROM precio")->fetchAll(PDO::FETCH_ASSOC));
+    public function __construct(PDO $pdo)
+    {
+        $this->pdo = $pdo;
     }
 
-    public function show(int $id): void {
-        $stmt = $this->pdo->prepare("SELECT * FROM precio WHERE id_precio=?");
+    public function index(): void
+    {
+        echo json_encode($this->pdo->query("SELECT p.id_precio, p.descripcion, p.id_cine, p.valor, c.nombre as nombre_cine
+            FROM precio p
+            JOIN cine c ON p.id_cine = c.id_cine")->fetchAll(PDO::FETCH_ASSOC));
+    }
+
+    public function show(int $id): void
+    {
+        $stmt = $this->pdo->prepare("SELECT p.id_precio, p.descripcion, p.id_cine, p.valor, c.nombre as nombre_cine
+            FROM precio p
+            JOIN cine c ON p.id_cine = c.id_cine
+            WHERE p.id_precio = ?");
         $stmt->execute([$id]);
         echo json_encode($stmt->fetch(PDO::FETCH_ASSOC));
     }
 
-    public function store(): void {
+    public function store(): void
+    {
         $input = json_decode(file_get_contents('php://input'), true);
 
         if (!$input || !isset($input['descripcion'], $input['valor'], $input['id_cine'])) {
@@ -39,7 +52,8 @@ class PrecioController {
         ]);
     }
 
-    public function update(int $id): void {
+    public function update(int $id): void
+    {
         $input = json_decode(file_get_contents('php://input'), true);
 
         $stmt = $this->pdo->prepare(
@@ -56,45 +70,46 @@ class PrecioController {
         echo json_encode(['message' => 'Precio actualizado']);
     }
 
-    public function delete(int $id): void {
+    public function delete(int $id): void
+    {
         $stmt = $this->pdo->prepare("DELETE FROM precio WHERE id_precio=?");
         $stmt->execute([$id]);
-        echo json_encode(['message'=>'Precio eliminado']);
+        echo json_encode(['message' => 'Precio eliminado']);
     }
-   public function tarifas(int $id_cine): void {
+    public function tarifas(int $id_cine): void
+    {
 
-    $stmt = $this->pdo->prepare(
-        "SELECT descripcion, valor 
-         FROM precio 
-         WHERE id_cine = ?"
-    );
+        $stmt = $this->pdo->prepare(
+            "SELECT p.descripcion, c.nombre as cine_nombre, p.valor 
+            FROM precio p
+            JOIN cine c ON p.id_cine = c.id_cine
+            WHERE p.id_cine = ?"
+        );
 
-    $stmt->execute([$id_cine]);
-    $precios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $stmt->execute([$id_cine]);
+        $precios = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $precioSemana = 0;
-    $precioFinde = 0;
+        $precioSemana = 0;
+        $precioFinde = 0;
 
-    foreach ($precios as $p) {
+        foreach ($precios as $p) {
 
-        $desc = strtolower($p['descripcion']);
+            $desc = strtolower($p['descripcion']);
 
-        // Para precio entre semana
-        if (strpos($desc, 'entre semana') !== false) {
-            $precioSemana = (int)$p['valor'];
+            // Para precio entre semana
+            if (strpos($desc, 'entre semana') !== false) {
+                $precioSemana = (int)$p['valor'];
+            }
+
+            // Para precio fin de semana
+            if (strpos($desc, 'fin de semana') !== false) {
+                $precioFinde = (int)$p['valor'];
+            }
         }
 
-        // Para precio fin de semana
-        if (strpos($desc, 'fin de semana') !== false) {
-            $precioFinde = (int)$p['valor'];
-        }
+        echo json_encode([
+            'precio_semana' => $precioSemana,
+            'precio_finde'  => $precioFinde
+        ]);
     }
-
-    echo json_encode([
-        'precio_semana' => $precioSemana,
-        'precio_finde'  => $precioFinde
-    ]);
-}
-
-
 }

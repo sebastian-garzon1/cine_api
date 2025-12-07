@@ -6,9 +6,9 @@ return [
     'db' => [
         'host' => 'localhost',
         // cambiar siempre la mia se lalma cine no cine_bd
-        'dbname' => 'cine',
+        'dbname' => 'cine_db',
         'user' => 'root',
-        'pass' => '123456',
+        'pass' => '',
         'charset' => 'utf8mb4',
     ],
     'app' => [
