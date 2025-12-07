@@ -1,5 +1,6 @@
 <?php
 declare(strict_types=1);
+require_once __DIR__ . '/../email_helper.php';
 
 class PasswordResetController {
 
@@ -18,13 +19,21 @@ class PasswordResetController {
         }
 
         // Verificar si el correo existe
-        $stmt = $this->pdo->prepare("SELECT id_persona, nombre FROM persona WHERE correo = ?");
+        $stmt = $this->pdo->prepare("SELECT 
+            p.id_persona,
+            p.nombre,
+            p.email,
+            l.usuario
+        FROM persona p
+        LEFT JOIN login l 
+            ON p.id_persona = l.id_persona
+        WHERE p.email = ?;");
         $stmt->execute([$correo]);
 
         $persona = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if (!$persona) {
-            json_response(['error' => 'Correo no registrado'], 404);
+            json_response(['error' => 'Usuario no registrado'], 404);
             return;
         }
 
@@ -32,16 +41,20 @@ class PasswordResetController {
         $codigo = rand(100000, 999999);
 
         // Guardar el código en la BD
-        $stmt = $this->pdo->prepare("UPDATE persona SET codigo_reset = ? WHERE correo = ?");
-        $stmt->execute([$codigo, $correo]);
+        $stmt = $this->pdo->prepare("UPDATE login SET code_reset = ? WHERE id_persona = ?");
+        $stmt->execute([$codigo, $persona["id_persona"]]);
 
-        // Enviar correo
-        $asunto = "Código de recuperación";
-        $mensaje = "Hola {$persona['nombre']},\n\nTu código de recuperación es: $codigo";
-        
-        mail($correo, $asunto, $mensaje);
+        $correo = enviarCorreo(
+            $correo,
+            "Codigo para restablecer contraseña",
+            "Tu código de recuperación es: <b>$codigo</b>"
+        );
 
-        json_response(['message' => 'Código enviado al correo']);
+        if($correo){
+            json_response(['message' => 'Código enviado al correo'], 200);
+        }else{
+            json_response(['error' => 'No se ha podido enviar el correo'], 404);
+        }
     }
     
     public function verificar(): void {
@@ -55,7 +68,7 @@ class PasswordResetController {
             return;
         }
 
-        $stmt = $this->pdo->prepare("SELECT * FROM persona WHERE correo = ? AND codigo_reset = ?");
+        $stmt = $this->pdo->prepare("SELECT * FROM persona p LEFT JOIN login l ON p.id_persona = l.id_persona WHERE p.email = ? and l.code_reset = ?;");
         $stmt->execute([$correo, $codigo]);
 
         $persona = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -65,7 +78,7 @@ class PasswordResetController {
             return;
         }
 
-        json_response(['message' => 'Código válido']);
+        json_response(['message' => 'Código válido'], 200);
     }
     
     public function cambiar(): void {
@@ -81,18 +94,19 @@ class PasswordResetController {
         }
 
         // Validar código
-        $stmt = $this->pdo->prepare("SELECT * FROM persona WHERE correo = ? AND codigo_reset = ?");
+        $stmt = $this->pdo->prepare("SELECT * FROM persona p LEFT JOIN login l ON p.id_persona = l.id_persona WHERE p.email = ? and l.code_reset = ?;");
         $stmt->execute([$correo, $codigo]);
+        $persona = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
+        if (!$persona) {
             json_response(['error' => 'Código incorrecto'], 400);
             return;
         }
 
         // Actualizar contraseña
-        $stmt = $this->pdo->prepare("UPDATE persona SET contrasena = ?, codigo_reset = NULL WHERE correo = ?");
-        $stmt->execute([$nueva, $correo]);
+        $stmt = $this->pdo->prepare("UPDATE login SET contrasena = ?, codigo_reset = NULL WHERE id_persona = ?");
+        $stmt->execute([$nueva, $persona["email"]]);
 
-        json_response(['message' => 'Contraseña actualizada correctamente']);
+        json_response(['message' => 'Contraseña actualizada correctamente'], 200);
     }
 }
