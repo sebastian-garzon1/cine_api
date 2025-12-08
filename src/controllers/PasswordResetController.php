@@ -104,8 +104,8 @@ class PasswordResetController {
         }
 
         // Actualizar contraseña
-        $stmt = $this->pdo->prepare("UPDATE login SET contrasena = ?, codigo_reset = NULL WHERE id_persona = ?");
-        $stmt->execute([$nueva, $persona["email"]]);
+        $stmt = $this->pdo->prepare("UPDATE login SET contrasena = ?, code_reset = NULL WHERE id_persona = ?");
+        $stmt->execute([$nueva, $persona["id_persona"]]);
 
         json_response(['message' => 'Contraseña actualizada correctamente'], 200);
     }
