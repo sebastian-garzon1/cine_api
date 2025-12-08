@@ -14,7 +14,7 @@ class PeliculaController {
      */
     public function index(): void {
         try {
-            $sql = "SELECT p.id_pelicula, p.titulo, p.genero, p.clasificacion, d.nombre AS director
+            $sql = "SELECT p.id_pelicula, p.titulo, p.genero, p.clasificacion, d.nombre AS director, p.estado
                     FROM pelicula p
                     LEFT JOIN director d ON p.id_director = d.id_director
                     ORDER BY p.id_pelicula DESC";
@@ -38,7 +38,7 @@ class PeliculaController {
         // 1) película + director
         $sql = "
             SELECT p.id_pelicula, p.titulo, p.genero, p.clasificacion,
-                   d.nombre AS director
+                   d.nombre AS director, p.estado
             FROM pelicula p
             LEFT JOIN director d ON p.id_director = d.id_director
             WHERE p.id_pelicula = ?
@@ -222,6 +222,42 @@ public function cinesPorPelicula(int $id): void {
         } catch (Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Error al eliminar película', 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function cambiarEstado(int $id): void {
+        try {
+            $raw = file_get_contents('php://input');
+error_log("RAW_BODY: " . $raw);
+$input = json_decode($raw, true);
+            $estado = $input['estado'] ?? null;
+
+            if ($estado === null) {
+                http_response_code(400);
+                echo json_encode(['error' => 'El campo "estado" es obligatorio']);
+                return;
+            }
+
+            // Validar que el estado sea 0 o 1
+            if (!in_array($estado, [0, 1], true)) {
+                http_response_code(400);
+                echo json_encode(['error' => 'El estado debe ser 0 o 1']);
+                return;
+            }
+
+            $sql = "UPDATE pelicula SET estado = ? WHERE id_pelicula = ?";
+            $stmt = $this->pdo->prepare($sql);
+            $stmt->execute([$estado, $id]);
+
+            http_response_code(200);
+            echo json_encode([
+                'message' => 'Estado actualizado correctamente',
+                'id' => $id,
+                'nuevo_estado' => $estado
+            ]);
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Error al actualizar el estado1', 'message' => $e->getMessage()]);
         }
     }
 }

@@ -160,8 +160,12 @@ switch ($segments[0]) {
             $controller->show((int)$segments[1]);
         }
 
+        elseif ($method === 'POST' && $segments[2] === 'estado'){
+            $controller->cambiarEstado((int)$segments[1]);
+        } 
+
         // POST /peliculas
-        elseif ($method === 'POST') {
+        elseif ($method === 'POST' && $segments[2] != 'estado') {
             $controller->store();
         }
 
@@ -169,7 +173,7 @@ switch ($segments[0]) {
         elseif ($method === 'PUT') {
             $controller->update((int)$segments[1]);
         }
-
+        
         // DELETE /peliculas/{id}
         elseif ($method === 'DELETE') {
             $controller->delete((int)$segments[1]);

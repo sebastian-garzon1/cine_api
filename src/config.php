@@ -8,7 +8,7 @@ return [
         // cambiar siempre la mia se lalma cine no cine_bd
         'dbname' => 'cine_db',
         'user' => 'root',
-        'pass' => '',
+        'pass' => '123456',
         'charset' => 'utf8mb4',
     ],
     'app' => [
