@@ -364,6 +364,9 @@ switch ($segments[0]) {
         elseif ($method === 'GET' && isset($segments[1]) && $segments[1] === 'precio') {
             $controller->getPrecio();
         }
+         elseif ($method === 'GET' && isset($segments[1]) && $segments[1] === 'top') {
+        $controller->topPeliculas();
+    }
 
         // GET /reservas/{id} (ver una reserva)
         elseif ($method === 'GET' && is_numeric($segments[1])) {
