@@ -193,4 +193,19 @@ class ReservaController {
         $stmt->execute([$id]);
         echo json_encode(['message'=>'Reserva eliminada']);
     }
+    public function topPeliculas(): void {
+    $sql = "
+        SELECT pel.titulo AS pelicula, COUNT(*) AS reservas
+        FROM reserva r
+        JOIN horario h ON r.id_horario = h.id_horario
+        JOIN pelicula pel ON h.id_pelicula = pel.id_pelicula
+        GROUP BY pel.id_pelicula
+        ORDER BY reservas DESC
+        LIMIT 10
+    ";
+
+    $stmt = $this->pdo->query($sql);
+    echo json_encode($stmt->fetchAll(PDO::FETCH_ASSOC));
+}
+
 }
